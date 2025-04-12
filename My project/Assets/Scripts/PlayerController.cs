@@ -9,10 +9,33 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private KeyCode leftInput, rightInput;
     [SerializeField] private Transform groundPoint;
     [SerializeField] private LayerMask groundLayer;
-
+    [SerializeField] private float knockBackForce = 300, knockUpForce = 400;
     private float speed = 0;
     private Rigidbody rb;
     private Animator animator;
+    private bool isHurt = false;
+   
+    private void OnEnable()
+    {
+        GameEvents.TakeDamage += TakeDamage;
+    }
+    private void OnDisable()
+    {
+        GameEvents.TakeDamage -= TakeDamage;
+    }
+    private void TakeDamage()
+    {
+        Debug.Log("Player was hurt");
+        rb.AddForce(-transform.forward * knockBackForce);
+        rb.AddForce(transform.up * knockUpForce);
+        isHurt = true;
+        Invoke("Recover", 1.5f);
+    }
+
+    private void Recover()
+    {
+        isHurt = false;
+    }
     void Start()
     {
         rb = GetComponent<Rigidbody>();
@@ -20,8 +43,10 @@ public class PlayerController : MonoBehaviour
     }
     private void FixedUpdate()
     {
+        if (isHurt)
+            return;
         float angle = Mathf.Abs(transform.eulerAngles.y - 180);
-        acceleration = Remap(0, 90, maxAcceleration, minAcceleration, angle);
+        acceleration = Remap(0, 90, maxAcceleration, minAcceleration, angle);        
         speed += acceleration * Time.fixedDeltaTime;
         speed = Mathf.Clamp(speed, minSpeed, maxSpeed);
         Vector3 velocity = speed * transform.forward * Time.fixedDeltaTime;
@@ -31,7 +56,7 @@ public class PlayerController : MonoBehaviour
     void Update()
     {
         bool isGrounded = Physics.Linecast(transform.position, groundPoint.position, groundLayer);
-        if (isGrounded)
+        if (isGrounded && !isHurt)
         {
             if (Input.GetKey(leftInput) && transform.eulerAngles.y < 269)
             {
